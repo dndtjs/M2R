@@ -1,0 +1,72 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+num_players = 100
+num_sims = 1000
+
+true_elos = np.random.normal(1500, 300, num_players)
+true_ranking = [[i, true_elos[i]] for i in range(num_players)]
+true_ranking.sort(key=lambda x: x[1], reverse=True)
+# player_id -> (rank, elo)
+dic_true = {true_ranking[i][0]: (i + 1, true_ranking[i][1]) for i in range(num_players)}
+
+def metric(dic_true, dic_est, rank=True):
+    if rank:
+        difference = [abs(dic_true[i][0] - dic_est[i][0]) for i in range(num_players)]
+    else:
+        difference = [abs(dic_true[i][1] - dic_est[i][1]) for i in range(num_players)]
+    return sum(difference) / len(difference)
+
+res = []
+elos = [1500 for i in range(num_players)]
+ranking = [[i, elos[i]] for i in range(num_players)]
+
+for n in range(num_sims):
+    # rank the current elo and match no.1 with no.2, no.3 with no.4, ...
+    if n > 30:
+        K = 20
+    else:
+        K = 40
+    for k in range(0, num_players, 2):
+        i, j = ranking[k][0], ranking[k + 1][0]
+        e_i = 1 / (1 + 10 ** ((elos[j] - elos[i]) / 400))
+        e_j = 1 - e_i
+        # assume no drawing
+        s_i = np.random.binomial(n=1, p=1 / (1 + 10 ** ((true_elos[j] - true_elos[i]) / 400)))
+        s_j = 1 - s_i
+        K_i = K_j = K
+        if elos[i] > 2400:
+            K_i = 10
+        if elos[j] > 2400:
+            K_j = 10
+        K_i = K_j = 40
+        elos[i] += K_i * (s_i - e_i)
+        elos[j] += K_j * (s_j - e_j)
+    ranking = [[i, elos[i]] for i in range(num_players)]
+    ranking.sort(key=lambda x: x[1], reverse=True)
+    dic_est = {ranking[i][0]: (i + 1, ranking[i][1]) for i in range(num_players)}
+    res.append(metric(dic_true, dic_est))
+    # changed because perason coefficients could give wrong impression
+    # like we could have the order of people wrong and it would be perfect
+    # as long as the set of elos is equal
+
+    # rank metric converges but wont converge further because we dont have draws
+    # for people with similar elo, their prob of winning would be close to 0.5
+    # and I suppose they would draw a lot, but they end up winning or losing
+    # causing them to oscillate rankings
+
+    # elo metric initially converges but actually diverge perhaps because in 
+    # our population, we have players who are much better than the others
+    # and end up getting really high and low elos
+
+print(dic_true)
+print("Estimate:")
+print(dic_est)
+
+plt.plot(range(len(res)), res)
+plt.title(f"Rank Metric, Rivalry, {num_sims} Rounds, No Draw")
+plt.xlabel("Number of Rounds")
+plt.ylabel("Mean Rank Error")
+plt.grid(True)
+plt.tight_layout()
+plt.show()
