@@ -10,7 +10,6 @@ num_sims = 10000
 true_elos = np.random.normal(1500, 300, num_players)
 true_ranking = [[i, true_elos[i]] for i in range(num_players)]
 true_ranking.sort(key=lambda x: x[1], reverse=True)
-# player_id -> (rank, elo)
 dic_true = {true_ranking[i][0]: (i + 1, true_ranking[i][1]) for i in range(num_players)}
 dic_count = {i: 0 for i in range(num_players)}
 dic_K = {i: 40 for i in range(num_players)}
@@ -63,7 +62,6 @@ for n in range(num_sims):
 
         e_i = 1 / (1 + 10 ** ((elos[j] - elos[i]) / 400))
         e_j = 1 - e_i
-        # assume no drawing
         s_i = np.random.binomial(n=1, p=1 / (1 + 10 ** ((true_elos[j] - true_elos[i]) / 400)))
         s_j = 1 - s_i
         elos[i] += dic_K[i] * (s_i - e_i)
@@ -75,18 +73,6 @@ for n in range(num_sims):
     dic_est = {ranking[i][0]: (i + 1, ranking[i][1]) for i in range(num_players)}
     l = [abs(dic_true[i][1] - dic_est[i][1]) for i in range(num_players)]
     res.append(sum(l) / len(l))
-    # changed because perason coefficients could give wrong impression
-    # like we could have the order of people wrong and it would be perfect
-    # as long as the set of elos is equal
-
-    # rank metric converges but wont converge further because we dont have draws
-    # for people with similar elo, their prob of winning would be close to 0.5
-    # and I suppose they would draw a lot, but they end up winning or losing
-    # causing them to oscillate rankings
-
-    # elo metric initially converges but actually diverge perhaps because in 
-    # our population, we have players who are much better than the others
-    # and end up getting really high and low elos
 
 print(dic_true)
 print("Estimate:")
